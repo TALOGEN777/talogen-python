@@ -13,6 +13,6 @@ is ``contact``, which delivers a real message to a human.
 
 from .client import DEFAULT_BASE_URL, ENTRY_POINTS, Client, TalogenError, RateLimit
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = ["Client", "TalogenError", "RateLimit", "DEFAULT_BASE_URL", "ENTRY_POINTS", "__version__"]

@@ -36,6 +36,13 @@ def _kv(label: str, value: Any) -> None:
     print(f"{label:<18}{value}")
 
 
+def _text(value: Any) -> str:
+    """Paragraph fields arrive as a string or a list of strings."""
+    if isinstance(value, list):
+        return "\n\n".join(str(v) for v in value)
+    return "" if value is None else str(value)
+
+
 def cmd_profile(client: Client, args: argparse.Namespace) -> int:
     p = client.get_profile()
     if args.json:
@@ -43,9 +50,9 @@ def cmd_profile(client: Client, args: argparse.Namespace) -> int:
         return EXIT_OK
     print(f"{p.get('name')} — {p.get('headline')}\n")
     if p.get("tagline"):
-        print(p["tagline"] + "\n")
+        print(_text(p["tagline"]) + "\n")
     if p.get("summary"):
-        print(p["summary"] + "\n")
+        print(_text(p["summary"]) + "\n")
     contact = p.get("contact") or {}
     for k in ("email", "linkedin", "github"):
         _kv(k, contact.get(k))
@@ -54,13 +61,16 @@ def cmd_profile(client: Client, args: argparse.Namespace) -> int:
     if cats:
         print("\nCapabilities:")
         for c in cats:
-            name = c.get("name") or c.get("title") or ""
-            items = c.get("skills") or c.get("items") or []
+            name = c.get("category") or c.get("name") or c.get("title") or ""
+            items = c.get("items") or c.get("skills") or []
             print(f"  {name}: {', '.join(map(str, items))[:160]}")
     if p.get("strengths"):
         print("\nStrengths:")
         for s in p["strengths"]:
-            print(f"  - {s}")
+            if isinstance(s, dict):
+                print(f"  - {s.get('title')}: {_text(s.get('detail'))}")
+            else:
+                print(f"  - {s}")
     return EXIT_OK
 
 
@@ -74,7 +84,8 @@ def cmd_candidate(client: Client, args: argparse.Namespace) -> int:
     _kv("availability", c.get("availability"))
     _kv("location", c.get("location"))
     _kv("work_auth", c.get("work_authorization"))
-    _kv("languages", ", ".join(map(str, c.get("languages") or [])) if isinstance(c.get("languages"), list) else c.get("languages"))
+    langs = c.get("languages")
+    _kv("languages", ", ".join(map(str, langs)) if isinstance(langs, list) else langs)
     roles = c.get("target_roles")
     if roles:
         print("target_roles:")
@@ -82,7 +93,7 @@ def cmd_candidate(client: Client, args: argparse.Namespace) -> int:
             print(f"  - {r}")
     _kv("compensation", c.get("compensation"))
     if c.get("summary"):
-        print("\n" + str(c["summary"]))
+        print("\n" + _text(c["summary"]))
     return EXIT_OK
 
 
@@ -91,7 +102,7 @@ def _print_items(items: List[dict]) -> None:
         flag = " (flagship)" if it.get("flagship") else ""
         print(f"{it.get('id'):<38}{it.get('title')}{flag}")
         if it.get("problem"):
-            print(f"{'':<38}{str(it['problem'])[:110]}")
+            print(f"{'':<38}{_text(it['problem'])[:110]}")
 
 
 def cmd_projects(client: Client, args: argparse.Namespace) -> int:
@@ -122,9 +133,11 @@ def cmd_project(client: Client, args: argparse.Namespace) -> int:
     print(f"{p.get('title')}  [{p.get('id')}]{'  (flagship)' if p.get('flagship') else ''}")
     _kv("link", p.get("link"))
     _kv("tags", ", ".join(map(str, p.get("tags") or [])))
-    for section in ("problem", "role", "solution", "approach", "implementation", "result"):
+    for section, label in (("problem", "PROBLEM"), ("my_role", "MY ROLE"), ("solution", "SOLUTION"),
+                           ("ai_technical_approach", "AI & TECHNICAL APPROACH"), ("implementation", "IMPLEMENTATION"),
+                           ("result", "RESULT")):
         if p.get(section):
-            print(f"\n{section.upper()}\n{p[section]}")
+            print(f"\n{label}\n{_text(p[section])}")
     return EXIT_OK
 
 
