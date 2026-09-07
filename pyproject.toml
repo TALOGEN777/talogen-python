@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "talogen"
+version = "0.1.0"
+description = "Official Python client and command-line tool for talogen.dev, Tal Ogen's agent-first portfolio: read the profile, projects, autonomous agents, and candidate facts, or contact Tal about a role through the same channel AI agents use. No API key, zero dependencies."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+authors = [{ name = "Tal Ogen" }]
+keywords = ["talogen", "tal-ogen", "portfolio", "cli", "sdk", "api-client", "ai-agents", "hiring", "mcp"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Environment :: Console",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://talogen.dev"
+Documentation = "https://talogen.dev/developers/"
+"OpenAPI spec" = "https://talogen.dev/openapi.json"
+"MCP server" = "https://talogen.dev/mcp"
+Source = "https://github.com/TALOGEN777/talogen-python"
+Issues = "https://github.com/TALOGEN777/talogen-python/issues"
+
+[project.scripts]
+talogen = "talogen.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
