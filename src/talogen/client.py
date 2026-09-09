@@ -19,6 +19,7 @@ DEFAULT_BASE_URL = "https://talogen.dev"
 #: full picture in one place (the CLI's ``links`` command prints these).
 ENTRY_POINTS = {
     "api_index": "https://talogen.dev/api/v1",
+    "services": "https://talogen.dev/api/v1/services",
     "openapi": "https://talogen.dev/openapi.json",
     "developer_portal": "https://talogen.dev/developers/",
     "llms_txt": "https://talogen.dev/llms.txt",
@@ -32,6 +33,7 @@ ENTRY_POINTS = {
     "agent_skills": "https://talogen.dev/.well-known/agent-skills/index.json",
     "ard_catalog": "https://talogen.dev/.well-known/ard.json",
     "for_hiring_agents": "https://talogen.dev/for-recruiters.html",
+    "agent_access": "https://talogen.dev/#agent-access",
 }
 
 
@@ -170,8 +172,43 @@ class Client:
         return self.request("GET", "/api/v1/profile")
 
     def get_candidate(self) -> Dict[str, Any]:
-        """Hiring facts: availability, target roles, location, work authorization."""
+        """Hiring facts: availability, target roles, engagement types, location, work authorization."""
         return self.request("GET", "/api/v1/candidate")
+
+    # ------------------------------------------------------------------ #
+    # AI transformation services and business-problem matching
+    # ------------------------------------------------------------------ #
+
+    def get_services(self) -> Dict[str, Any]:
+        """AI transformation services for businesses.
+
+        Engagement stages (opportunity call, opportunity audit, pilot and
+        implementation), representative use cases, capability pillars
+        (discovery, implementation, adoption), what is not offered, how to
+        engage, and the pricing stance (not published).
+        """
+        return self.request("GET", "/api/v1/services")
+
+    def analyze_business_problem(self, problem: str, *, industry: Optional[str] = None,
+                                 team_size: Optional[str] = None, tools: Optional[str] = None) -> Dict[str, Any]:
+        """Can Tal help with this workflow?
+
+        Returns ``fit`` (strong / likely / partial / outside), the matched AI
+        opportunities, the closest case studies, a likely approach,
+        considerations, a recommended first pilot, and an indicative scope.
+        Deterministic heuristics over the published services and case
+        studies - informational, never a quote. Side-effect-free.
+        """
+        if not problem or len(problem.strip()) < 10:
+            raise ValueError("problem must describe the workflow in at least 10 characters")
+        body = {"problem": problem, "industry": industry, "team_size": team_size, "tools": tools}
+        return self.request("POST", "/api/v1/services/analyze", json_body=body)
+
+    def get_relevant_case_studies(self, query: str, *, limit: Optional[int] = None) -> Dict[str, Any]:
+        """Projects and agents ranked against a problem or a capability, with reasons."""
+        if not query or not query.strip():
+            raise ValueError("query is required")
+        return self.request("GET", "/api/v1/services/case-studies", params={"q": query, "limit": limit})
 
     def list_projects(self, *, tag: Optional[str] = None, flagship: bool = False,
                       limit: Optional[int] = None, cursor: Optional[str] = None) -> Dict[str, Any]:
@@ -206,7 +243,7 @@ class Client:
                 return
 
     def get_project(self, project_id: str) -> Dict[str, Any]:
-        """Full problem, solution, result detail for one project or agent by id."""
+        """Full problem, solution, outcome detail for one project or agent by id."""
         return self.request("GET", f"/api/v1/projects/{urllib.parse.quote(project_id)}")
 
     def get_agent(self, agent_id: str) -> Dict[str, Any]:
@@ -219,7 +256,7 @@ class Client:
 
     def contact(self, message: str, reply_to: str, *, sender: Optional[str] = None,
                 subject: Optional[str] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
-        """Send Tal a message about a role or opportunity (async job).
+        """Send Tal a message - about a role, or a business problem for an AI Opportunity Call (async job).
 
         Returns the ``202 Accepted`` body with ``id`` and ``status_url``; poll
         :meth:`contact_status` for the delivery record. A human reads and

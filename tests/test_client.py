@@ -78,6 +78,38 @@ class ClientTests(unittest.TestCase):
         self.assertNotIn("subject", seen["body"])
         self.assertEqual(seen["idem"], "k1")
 
+    def test_analyze_posts_problem_and_optional_fields(self):
+        seen = {}
+
+        def fake(req, timeout=None):
+            seen["url"] = req.full_url
+            seen["method"] = req.get_method()
+            seen["body"] = json.loads(req.data.decode())
+            return _Resp(200, {"fit": "strong", "matched_opportunities": [{"id": "email-triage"}]})
+
+        with mock.patch("urllib.request.urlopen", fake):
+            a = self.c.analyze_business_problem("Two admins read 80 emails a day", industry="insurance")
+        self.assertTrue(seen["url"].endswith("/api/v1/services/analyze"))
+        self.assertEqual(seen["method"], "POST")
+        self.assertEqual(seen["body"], {"problem": "Two admins read 80 emails a day", "industry": "insurance"})
+        self.assertEqual(a["fit"], "strong")
+        with self.assertRaises(ValueError):
+            self.c.analyze_business_problem("short")
+
+    def test_case_studies_builds_query(self):
+        seen = {}
+
+        def fake(req, timeout=None):
+            seen["url"] = req.full_url
+            return _Resp(200, {"query": "reports", "case_studies": [{"id": "qa-agent"}]})
+
+        with mock.patch("urllib.request.urlopen", fake):
+            r = self.c.get_relevant_case_studies("recurring reports", limit=3)
+        self.assertIn("/api/v1/services/case-studies?", seen["url"])
+        self.assertIn("q=recurring+reports", seen["url"])
+        self.assertIn("limit=3", seen["url"])
+        self.assertEqual(r["case_studies"][0]["id"], "qa-agent")
+
     def test_contact_validates_locally(self):
         with self.assertRaises(ValueError):
             self.c.contact("hi", "nope")
@@ -94,6 +126,13 @@ class CliTests(unittest.TestCase):
         with mock.patch("urllib.request.urlopen", mock.Mock(side_effect=e)), mock.patch("sys.stderr", new_callable=io.StringIO) as err:
             self.assertEqual(main(["project", "x"]), 3)
         self.assertIn("not_found", err.getvalue())
+
+    def test_analyze_renders(self):
+        body = {"fit": "strong", "fit_explanation": "matches", "matched_opportunities": [{"rank": 1, "title": "Incoming emails", "expected_value": "high", "implementation_difficulty": "low", "likely_approach": "Classify and route."}], "indicative_scope": {"size": "small", "size_meaning": "One workflow."}}
+        with mock.patch("urllib.request.urlopen", lambda req, timeout=None: _Resp(200, body)), mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            self.assertEqual(main(["analyze", "Two admins read 80 emails a day and update the CRM"]), 0)
+        self.assertIn("Fit: strong", out.getvalue())
+        self.assertIn("Incoming emails", out.getvalue())
 
     def test_profile_renders(self):
         body = {"name": "Tal Ogen", "headline": "Lead", "contact": {"email": "t@example.com"}, "skillCategories": [{"name": "AI", "skills": ["agents"]}]}
